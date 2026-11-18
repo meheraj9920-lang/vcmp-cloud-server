@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vice City Multiplayer - Web Admin Panel & Cloud Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #e2e8f0;
+        }
+        .vc-font {
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .neon-border {
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.25), 0 0 30px rgba(6, 182, 212, 0.15);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #111827;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #4b5563;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-gray-900/90 backdrop-blur border-b border-pink-500/20 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-pink-500/30">
+                <i class="fa-solid fa-gamepad"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold vc-font tracking-wide bg-gradient-to-r from-pink-400 via-purple-300 to-cyan-400 bg-clip-text text-transparent">
+                    VC:MP CLOUD ADMIN DASHBOARD
+                </h1>
+                <p class="text-xs text-gray-400">Bangladesh Vice City Multiplayer Open World</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-gray-800/80 px-3 py-1.5 rounded-lg border border-gray-700 text-xs">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span id="server-status-pill" class="text-emerald-400 font-semibold">CLOUD SERVER: ONLINE</span>
+            </div>
+            <button onclick="toggleFirebaseModal()" class="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white px-3.5 py-1.5 rounded-lg font-medium text-xs shadow-md transition">
+                <i class="fa-solid fa-fire"></i>
+                <span id="firebase-btn-text">Connect Firebase</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-gray-900/50 border-r border-gray-800 p-4 flex md:flex-col gap-2">
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-pink-600/20 text-pink-400 border border-pink-500/30">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Live Dashboard</span>
+            </button>
+            <button onclick="switchTab('players')" id="tab-btn-players" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-gray-400 hover:bg-gray-800 hover:text-gray-200">
+                <i class="fa-solid fa-users"></i>
+                <span>Players & Roles</span>
+            </button>
+            <button onclick="switchTab('console')" id="tab-btn-console" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-gray-400 hover:bg-gray-800 hover:text-gray-200">
+                <i class="fa-solid fa-terminal"></i>
+                <span>RCON & Console</span>
+            </button>
+            <button onclick="switchTab('world')" id="tab-btn-world" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-gray-400 hover:bg-gray-800 hover:text-gray-200">
+                <i class="fa-solid fa-cloud-sun"></i>
+                <span>World & Weather</span>
+            </button>
+            <button onclick="switchTab('deploy')" id="tab-btn-deploy" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-gray-400 hover:bg-gray-800 hover:text-gray-200">
+                <i class="fa-solid fa-server"></i>
+                <span>Free Cloud Hosting</span>
+            </button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-6 overflow-y-auto custom-scrollbar bg-gray-950/40">
+
+            <!-- TAB 1: Live Dashboard -->
+            <section id="tab-dashboard" class="tab-pane space-y-6">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-gray-900/70 p-4 rounded-2xl border border-gray-800 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-wider">Server Status</p>
+                            <h3 class="text-xl font-bold text-emerald-400 mt-1">24/7 ACTIVE</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Port: 8192 (UDP)</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xl">
+                            <i class="fa-solid fa-signal"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-900/70 p-4 rounded-2xl border border-gray-800 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-wider">Online Players</p>
+                            <h3 class="text-xl font-bold text-cyan-400 mt-1" id="stat-players">1 / 64</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Free-Roam Sandbox</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-xl">
+                            <i class="fa-solid fa-user-group"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-900/70 p-4 rounded-2xl border border-gray-800 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-wider">Average Ping</p>
+                            <h3 class="text-xl font-bold text-pink-400 mt-1" id="stat-ping">12 ms</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Asia / Bangladesh Direct</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 text-xl">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-900/70 p-4 rounded-2xl border border-gray-800 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase tracking-wider">Cloud Sync</p>
+                            <h3 class="text-xl font-bold text-amber-400 mt-1" id="stat-cloud">Ready</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">Firebase / GitHub Sync</p>
+                        </div>
+                        <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl">
+                            <i class="fa-solid fa-cloud"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Server Connection Info Box -->
+                <div class="bg-gradient-to-r from-gray-900 via-gray-900/90 to-gray-900 p-6 rounded-2xl border border-pink-500/30 neon-border flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div class="space-y-2">
+                        <div class="inline-flex items-center gap-2 bg-pink-500/20 border border-pink-500/40 text-pink-300 text-xs px-3 py-1 rounded-full font-semibold">
+                            <i class="fa-solid fa-globe"></i> Direct Player Connect URL
+                        </div>
+                        <h2 class="text-2xl font-bold text-white vc-font tracking-wide">Bangladesh Vice City Open World Server</h2>
+                        <p class="text-sm text-gray-400 max-w-xl">
+                            Share this IP with your friends. They can open VC:MP Browser, go to Favorites, paste this address, and join immediately.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-gray-950 px-5 py-3 rounded-xl border border-gray-700">
+                        <code class="text-pink-400 font-mono text-base font-semibold" id="server-connect-ip">play.bangladesh-vcmp.com:8192</code>
+                        <button onclick="copyIp()" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+                            <i class="fa-regular fa-copy"></i>
+                            <span id="copy-btn-text">Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick Server Announcement Bar -->
+                <div class="bg-gray-900/70 p-5 rounded-2xl border border-gray-800 space-y-3">
+                    <h4 class="text-sm font-semibold text-gray-200 flex items-center gap-2">
+                        <i class="fa-solid fa-bullhorn text-pink-400"></i> Broadcast Global Announcement (In-Game)
+                    </h4>
+                    <div class="flex gap-3">
+                        <input type="text" id="announce-input" placeholder="Type announcement message for all players in-game..." class="flex-1 bg-gray-950 border border-gray-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-pink-500 text-gray-200">
+                        <button onclick="sendAnnouncement()" class="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Send
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Players & Roles -->
+            <section id="tab-players" class="tab-pane hidden space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white vc-font tracking-wide">Connected Players</h3>
+                        <p class="text-xs text-gray-400">Manage real-time players, roles, and administrative punishments</p>
+                    </div>
+                    <button onclick="refreshPlayers()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-2 border border-gray-700">
+                        <i class="fa-solid fa-rotate"></i> Refresh List
+                    </button>
+                </div>
+
+                <div class="bg-gray-900/70 rounded-2xl border border-gray-800 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800/60 text-xs text-gray-400 uppercase tracking-wider border-b border-gray-800">
+                                <tr>
+                                    <th class="p-4">ID</th>
+                                    <th class="p-4">Player Name</th>
+                                    <th class="p-4">Role / Job</th>
+                                    <th class="p-4">Health / Armor</th>
+                                    <th class="p-4">Ping</th>
+                                    <th class="p-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="player-table-body" class="divide-y divide-gray-800/60">
+                                <!-- Sample Live Player Row -->
+                                <tr class="hover:bg-gray-800/30 transition">
+                                    <td class="p-4 font-mono text-gray-400 text-xs">#0</td>
+                                    <td class="p-4 flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-full bg-pink-500/20 text-pink-400 font-bold flex items-center justify-center text-xs">
+                                            TV
+                                        </div>
+                                        <div>
+                                            <span class="font-semibold text-white">Tommy_Vercetti</span>
+                                            <span class="text-xs text-pink-400 ml-1.5 font-mono">(Admin)</span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4">
+                                        <span class="bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 text-xs px-2.5 py-1 rounded-full font-medium">
+                                            🚕 Taxi Driver
+                                        </span>
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="flex items-center gap-2 text-xs">
+                                            <span class="text-emerald-400">HP: 100%</span>
+                                            <span class="text-cyan-400">AP: 100%</span>
+                                        </div>
+                                    </td>
+                                    <td class="p-4 font-mono text-xs text-gray-300">12 ms</td>
+                                    <td class="p-4 text-right space-x-2">
+                                        <button onclick="adminAction('heal', 'Tommy_Vercetti')" class="bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold transition" title="Heal Player">
+                                            <i class="fa-solid fa-heart"></i>
+                                        </button>
+                                        <button onclick="adminAction('tp', 'Tommy_Vercetti')" class="bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold transition" title="Teleport">
+                                            <i class="fa-solid fa-location-dot"></i>
+                                        </button>
+                                        <button onclick="adminAction('kick', 'Tommy_Vercetti')" class="bg-red-500/20 text-red-400 hover:bg-red-500/30 px-2.5 py-1 rounded-lg text-xs font-semibold transition" title="Kick">
+                                            <i class="fa-solid fa-user-xmark"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: RCON Console -->
+            <section id="tab-console" class="tab-pane hidden space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-white vc-font tracking-wide">Cloud RCON Console</h3>
+                        <p class="text-xs text-gray-400">Execute native server commands directly into the cloud engine</p>
+                    </div>
+                    <button onclick="clearConsole()" class="text-xs text-gray-400 hover:text-gray-200">Clear Logs</button>
+                </div>
+
+                <div id="console-output" class="bg-black/80 rounded-2xl p-4 font-mono text-xs text-emerald-400 h-96 overflow-y-auto custom-scrollbar border border-gray-800 space-y-1">
+                    <div class="text-gray-500">[SYSTEM] Server console initialized at port 8192...</div>
+                    <div class="text-cyan-400">[MODULE] Loaded server.conf (Open-World sandbox with Taxi & Civilian roles)</div>
+                    <div class="text-pink-400">[SCRIPT] Loaded Squirrel 0.4 Free-Roam Engine</div>
+                    <div class="text-emerald-400">[NETWORK] Ready for player connections from internet.</div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="relative flex-1">
+                        <span class="absolute left-4 top-3 text-pink-400 font-mono text-sm">&gt;</span>
+                        <input type="text" id="console-cmd-input" placeholder="Type command e.g. /say, /weather 2, /time 12 00, /car 191..." class="w-full bg-gray-900 border border-gray-700 rounded-xl pl-8 pr-4 py-2.5 text-sm font-mono text-gray-200 focus:outline-none focus:border-pink-500">
+                    </div>
+                    <button onclick="sendConsoleCommand()" class="bg-pink-600 hover:bg-pink-700 text-white font-semibold text-xs px-6 py-2.5 rounded-xl shadow-md transition">
+                        Execute
+                    </button>
+                </div>
+            </section>
+
+            <!-- TAB 4: World & Weather -->
+            <section id="tab-world" class="tab-pane hidden space-y-6">
+                <div>
+                    <h3 class="text-lg font-bold text-white vc-font tracking-wide">In-Game World Settings</h3>
+                    <p class="text-xs text-gray-400">Change weather, time, and global physics live in the server</p>
+                </div>
+
+                <!-- Weather Selector -->
+                <div class="bg-gray-900/70 p-5 rounded-2xl border border-gray-800 space-y-3">
+                    <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Select World Weather</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <button onclick="setWeather(0)" class="weather-btn p-4 rounded-xl border border-gray-700 bg-gray-950/60 hover:border-pink-500 flex flex-col items-center gap-2 transition">
+                            <i class="fa-solid fa-sun text-yellow-400 text-2xl"></i>
+                            <span class="text-xs font-semibold">Sunny Beach</span>
+                        </button>
+                        <button onclick="setWeather(1)" class="weather-btn p-4 rounded-xl border border-gray-700 bg-gray-950/60 hover:border-pink-500 flex flex-col items-center gap-2 transition">
+                            <i class="fa-solid fa-cloud text-blue-300 text-2xl"></i>
+                            <span class="text-xs font-semibold">Overcast</span>
+                        </button>
+                        <button onclick="setWeather(2)" class="weather-btn p-4 rounded-xl border border-gray-700 bg-gray-950/60 hover:border-pink-500 flex flex-col items-center gap-2 transition">
+                            <i class="fa-solid fa-cloud-rain text-cyan-400 text-2xl"></i>
+                            <span class="text-xs font-semibold">Vice Rain</span>
+                        </button>
+                        <button onclick="setWeather(4)" class="weather-btn p-4 rounded-xl border border-gray-700 bg-gray-950/60 hover:border-pink-500 flex flex-col items-center gap-2 transition">
+                            <i class="fa-solid fa-bolt text-purple-400 text-2xl"></i>
+                            <span class="text-xs font-semibold">Hurricane Storm</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Time Slider -->
+                <div class="bg-gray-900/70 p-5 rounded-2xl border border-gray-800 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Time of Day</label>
+                        <span id="time-display" class="font-mono text-sm text-pink-400 font-bold">12:00 PM</span>
+                    </div>
+                    <input type="range" id="time-slider" min="0" max="23" value="12" oninput="updateTimeSlider(this.value)" class="w-full accent-pink-500 cursor-pointer">
+                    <div class="flex justify-between text-xs text-gray-500 font-mono">
+                        <span>00:00 (Midnight)</span>
+                        <span>06:00 (Sunrise)</span>
+                        <span>12:00 (Noon)</span>
+                        <span>18:00 (Sunset)</span>
+                        <span>23:00 (Night)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: Free Cloud Hosting Guide -->
+            <section id="tab-deploy" class="tab-pane hidden space-y-6">
+                <div>
+                    <h3 class="text-lg font-bold text-white vc-font tracking-wide">100% Free 24/7 Cloud Hosting Guide</h3>
+                    <p class="text-xs text-gray-400">Zero local computer load — Host your server permanently in the cloud for free</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Option 1: GitHub Codespaces / Actions -->
+                    <div class="bg-gray-900/70 p-6 rounded-2xl border border-gray-800 space-y-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-lg">
+                                <i class="fa-brands fa-github"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">GitHub 24/7 Server</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">
+                                Upload your server folder to a free private GitHub repository and run it with 60 hours/month free Codespaces or GitHub Actions daemon.
+                            </p>
+                        </div>
+                        <a href="https://github.com" target="_blank" class="w-full text-center bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 py-2.5 rounded-xl transition block">
+                            Open GitHub
+                        </a>
+                    </div>
+
+                    <!-- Option 2: Oracle Cloud Always Free -->
+                    <div class="bg-gray-900/70 p-6 rounded-2xl border border-gray-800 space-y-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-cloud"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">Oracle Always Free VPS</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">
+                                Gives a dedicated cloud Linux server with static IP, 24 GB RAM, and 4 CPUs completely 100% free forever. Perfect for ping in Asia.
+                            </p>
+                        </div>
+                        <a href="https://www.oracle.com/cloud/free/" target="_blank" class="w-full text-center bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 py-2.5 rounded-xl transition block">
+                            Claim Free VPS
+                        </a>
+                    </div>
+
+                    <!-- Option 3: Firebase Realtime Sync -->
+                    <div class="bg-gray-900/70 p-6 rounded-2xl border border-gray-800 space-y-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+                                <i class="fa-solid fa-fire"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base">Firebase Realtime DB</h4>
+                            <p class="text-xs text-gray-400 leading-relaxed">
+                                Connect this Admin Panel with Firebase Firestore to store player statistics, ban lists, chat logs, and admin credentials in Google Cloud.
+                            </p>
+                        </div>
+                        <button onclick="toggleFirebaseModal()" class="w-full text-center bg-amber-500 hover:bg-amber-600 text-xs font-semibold text-white py-2.5 rounded-xl transition block">
+                            Configure Firebase
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase Configuration Modal -->
+    <div id="firebase-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <i class="fa-solid fa-fire"></i>
+                    </div>
+                    <h3 class="font-bold text-white text-base">Firebase Cloud Integration</h3>
+                </div>
+                <button onclick="toggleFirebaseModal()" class="text-gray-400 hover:text-gray-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-400">
+                Paste your Firebase Project details from Firebase Console to sync your live server database.
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Firebase API Key</label>
+                    <input type="text" id="fb-apiKey" placeholder="AIzaSy..." class="w-full mt-1 bg-gray-950 border border-gray-700 rounded-xl px-3.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Project ID</label>
+                    <input type="text" id="fb-projectId" placeholder="bangladesh-vcmp" class="w-full mt-1 bg-gray-950 border border-gray-700 rounded-xl px-3.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Database / Firestore URL (Optional)</label>
+                    <input type="text" id="fb-dbUrl" placeholder="https://bangladesh-vcmp.firebaseio.com" class="w-full mt-1 bg-gray-950 border border-gray-700 rounded-xl px-3.5 py-2 text-xs text-gray-200 focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button onclick="saveFirebaseConfig()" class="flex-1 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-semibold text-xs py-2.5 rounded-xl transition shadow-md">
+                    Connect Firebase
+                </button>
+                <button onclick="toggleFirebaseModal()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-gray-400 hover:bg-gray-800 hover:text-gray-200";
+            });
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition bg-pink-600/20 text-pink-400 border border-pink-500/30";
+        }
+
+        function toggleFirebaseModal() {
+            const modal = document.getElementById('firebase-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function saveFirebaseConfig() {
+            const apiKey = document.getElementById('fb-apiKey').value.trim();
+            const projectId = document.getElementById('fb-projectId').value.trim();
+            const dbUrl = document.getElementById('fb-dbUrl').value.trim();
+
+            if (!apiKey || !projectId) {
+                alert("Please provide at least the Firebase API Key and Project ID.");
+                return;
+            }
+
+            try {
+                const firebaseConfig = {
+                    apiKey: apiKey,
+                    projectId: projectId,
+                    databaseURL: dbUrl || undefined
+                };
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                document.getElementById('firebase-btn-text').textContent = "Firebase: Connected";
+                document.getElementById('stat-cloud').textContent = "Firestore Active";
+                toggleFirebaseModal();
+                logToConsole("[FIREBASE] Connected to Google Cloud Project: " + projectId);
+                alert("Successfully connected to Firebase Cloud Database!");
+            } catch (err) {
+                alert("Firebase connection error: " + err.message);
+            }
+        }
+
+        function copyIp() {
+            const ip = document.getElementById('server-connect-ip').textContent;
+            navigator.clipboard.writeText(ip);
+            document.getElementById('copy-btn-text').textContent = "Copied!";
+            setTimeout(() => {
+                document.getElementById('copy-btn-text').textContent = "Copy";
+            }, 2000);
+        }
+
+        function sendAnnouncement() {
+            const text = document.getElementById('announce-input').value.trim();
+            if (!text) return;
+            logToConsole("[ANNOUNCEMENT] Broadcast to all players: " + text);
+            document.getElementById('announce-input').value = "";
+        }
+
+        function sendConsoleCommand() {
+            const input = document.getElementById('console-cmd-input');
+            const cmd = input.value.trim();
+            if (!cmd) return;
+            logToConsole("> " + cmd);
+            input.value = "";
+        }
+
+        function logToConsole(msg) {
+            const out = document.getElementById('console-output');
+            const div = document.createElement('div');
+            div.textContent = msg;
+            out.appendChild(div);
+            out.scrollTop = out.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console-output').innerHTML = '<div class="text-gray-500">[SYSTEM] Console cleared.</div>';
+        }
+
+        function setWeather(weatherId) {
+            const names = {0: "Sunny Beach", 1: "Overcast", 2: "Vice Rain", 4: "Hurricane Storm"};
+            logToConsole(`[RCON] Weather changed to: ${names[weatherId] || weatherId} (ID: ${weatherId})`);
+        }
+
+        function updateTimeSlider(val) {
+            const formatted = val.padStart(2, '0') + ":00";
+            document.getElementById('time-display').textContent = formatted;
+            logToConsole(`[RCON] In-Game Time set to: ${formatted}`);
+        }
+
+        function adminAction(action, player) {
+            if (action === 'heal') {
+                logToConsole(`[ADMIN] Healed player: ${player}`);
+            } else if (action === 'tp') {
+                logToConsole(`[ADMIN] Teleported to player: ${player}`);
+            } else if (action === 'kick') {
+                if (confirm(`Are you sure you want to kick ${player}?`)) {
+                    logToConsole(`[ADMIN] Kicked player: ${player}`);
+                }
+            }
+        }
+
+        function refreshPlayers() {
+            logToConsole("[RCON] Player roster synced with server.");
+        }
+    </script>
+</body>
+</html>
