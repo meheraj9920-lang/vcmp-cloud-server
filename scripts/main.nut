@@ -362,6 +362,7 @@ function onServerStop()
 
 function onScriptLoad()
 {
+    InitGamemodes();
     // server info is printed in the console
     print( "------------------------------------" );
     print( "Server name: " + SRV_NAME );
@@ -401,6 +402,7 @@ function onPlayerRequestSpawn( player )
 
 function onPlayerSpawn( player )
 {
+    HandleGamemodeSpawn(player);
 	//player.SetWeapon(33, 9999);
 	//player.Armour = 100; 
 	player.Cash = 1500;
@@ -413,6 +415,7 @@ function onPlayerDeath( player, reason )
 //function onPlayerKill( player, killer, reason, bodypart )
 function onPlayerKill( killer, player, reason, bodypart )
 {
+    HandleGamemodeKill(killer, player, reason);
     //if(killer && killer != player)
     //{
     //    killer.Cash += 1000;
@@ -433,6 +436,7 @@ function onPlayerChat( player, text )
 
 function onPlayerCommand( player, cmd, text )
 {
+    if (HandleGamemodeCommand(player, cmd, text)) return 1;
 	if(!DEBUG_MODE)
 	{
 		MessagePlayer("Debug commands are disabled.", player);
@@ -992,4 +996,5 @@ function SendDataToClient( player, ... )
 }
 // VC-MP Map Editor Addon
 dofile("scripts/Editor.nut");
+dofile("scripts/gamemodes.nut");
 
